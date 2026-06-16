@@ -1,8 +1,10 @@
 envVarGroups:
-  - name: database-config
+  - name: blog-backend-secrets
     envVars:
       - key: MONGO_URI
-        sync: false # This will prompt you to safely paste your MongoDB Atlas string in the dashboard once
+        sync: false # Render will prompt you for this string securely in the dashboard
+      - key: RABBIT_MQ
+        sync: false # Render will prompt you for your new CloudAMQP string here
 
 services:
   # 1. Public API Gateway (Exposed to the world)
@@ -15,13 +17,12 @@ services:
     envVars:
       - key: PORT
         value: "3000"
+      - fromGroup: blog-backend-secrets
       - key: REDIS_URL
         fromService:
           type: keyvalue
           name: blog-redis
           property: connectionString
-      - key: RABBIT_MQ
-        value: amqps://kaawkegr:TrlwWZWTjXgzkZHUP8_1coeWdHpg4jaI@raccoon.lmq.cloudamqp.com/kaawkegrE
 
   # 2. Private Auth Service (Hidden from the public internet)
   - type: pserv
@@ -33,14 +34,12 @@ services:
     envVars:
       - key: PORT
         value: "4000"
-      - fromGroup: database-config
+      - fromGroup: blog-backend-secrets
       - key: REDIS_URL
         fromService:
           type: keyvalue
           name: blog-redis
           property: connectionString
-      - key: RABBIT_MQ
-        value: amqps://kaawkegr:TrlwWZWTjXgzkZHUP8_1coeWdHpg4jaI@raccoon.lmq.cloudamqp.com/kaawkegrE
 
   # 3. Private Post Service
   - type: pserv
@@ -52,14 +51,12 @@ services:
     envVars:
       - key: PORT
         value: "6000"
-      - fromGroup: database-config
+      - fromGroup: blog-backend-secrets
       - key: REDIS_URL
         fromService:
           type: keyvalue
           name: blog-redis
           property: connectionString
-      - key: RABBIT_MQ
-        value: amqps://kaawkegr:TrlwWZWTjXgzkZHUP8_1coeWdHpg4jaI@raccoon.lmq.cloudamqp.com/kaawkegrE
 
   # 4. Private Media Service
   - type: pserv
@@ -69,14 +66,12 @@ services:
     dockerfilePath: ./media-service/Dockerfile
     dockerContext: ./media-service
     envVars:
-      - fromGroup: database-config
+      - fromGroup: blog-backend-secrets
       - key: REDIS_URL
         fromService:
           type: keyvalue
           name: blog-redis
           property: connectionString
-      - key: RABBIT_MQ
-        value: amqps://kaawkegr:TrlwWZWTjXgzkZHUP8_1coeWdHpg4jaI@raccoon.lmq.cloudamqp.com/kaawkegrE
 
   # 5. Private Comment Service
   - type: pserv
@@ -86,17 +81,15 @@ services:
     dockerfilePath: ./comment-service/Dockerfile
     dockerContext: ./comment-service
     envVars:
-      - fromGroup: database-config
+      - fromGroup: blog-backend-secrets
       - key: REDIS_URL
         fromService:
           type: keyvalue
           name: blog-redis
           property: connectionString
-      - key: RABBIT_MQ
-        value: amqps://kaawkegr:TrlwWZWTjXgzkZHUP8_1coeWdHpg4jaI@raccoon.lmq.cloudamqp.com/kaawkegrE
 
   # 6. Render Key-Value Store (Redis Engine Instance)
   - type: keyvalue
     name: blog-redis
     plan: free
-    ipAllowList: [] # Strict internal-only security mapping
+    ipAllowList: [] # Strict internal-only mapping
