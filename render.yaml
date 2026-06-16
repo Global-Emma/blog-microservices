@@ -1,13 +1,17 @@
 envVarGroups:
   - name: blog-backend-secrets
     envVars:
-      - key: MONGO_URI
-        sync: false # Pasted securely in the Render Dashboard -> Env Groups
+      - key: NODE_ENV
+        value: "production"
+      - key: MONGO_DB_URL
+        sync: false # Paste your raw mongodb+srv:// string securely in Render's dashboard
+      - key: JWT_SECRET
+        sync: false # Paste your secret string securely in Render's dashboard
       - key: RABBIT_MQ
-        sync: false # Pasted securely in the Render Dashboard -> Env Groups
+        sync: false # Paste your cloud AMQP string securely in Render's dashboard
 
 services:
-  # 1. Public API Gateway (The public-facing entry point)
+  # 1. Public API Gateway
   - type: web
     name: api-gateway
     runtime: docker
@@ -25,15 +29,15 @@ services:
           property: connectionString
       - key: AUTH_SERVICE_URL
         value: http://auth-service:4000
+      - key: MEDIA_SERVICE_URL
+        value: http://media-service:5000
       - key: POST_SERVICE_URL
         value: http://post-service:6000
       - key: COMMENT_SERVICE_URL
-        value: http://comment-service:5000
-      - key: MEDIA_SERVICE_URL
-        value: http://media-service:8000
+        value: http://comment-service:7000
 
   # 2. Private Auth Service
-  - type: pserv
+  - type: private
     name: auth-service
     runtime: docker
     plan: free
@@ -49,8 +53,25 @@ services:
           name: blog-redis
           property: connectionString
 
-  # 3. Private Post Service
-  - type: pserv
+  # 3. Private Media Service
+  - type: private
+    name: media-service
+    runtime: docker
+    plan: free
+    dockerfilePath: ./media-service/Dockerfile
+    dockerContext: ./media-service
+    envVars:
+      - key: PORT
+        value: "5000"
+      - fromGroup: blog-backend-secrets
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: blog-redis
+          property: connectionString
+
+  # 4. Private Post Service
+  - type: private
     name: post-service
     runtime: docker
     plan: free
@@ -66,25 +87,8 @@ services:
           name: blog-redis
           property: connectionString
 
-  # 4. Private Media Service
-  - type: pserv
-    name: media-service
-    runtime: docker
-    plan: free
-    dockerfilePath: ./media-service/Dockerfile
-    dockerContext: ./media-service
-    envVars:
-      - key: PORT
-        value: "8000"
-      - fromGroup: blog-backend-secrets
-      - key: REDIS_URL
-        fromService:
-          type: keyvalue
-          name: blog-redis
-          property: connectionString
-
   # 5. Private Comment Service
-  - type: pserv
+  - type: private
     name: comment-service
     runtime: docker
     plan: free
@@ -92,7 +96,7 @@ services:
     dockerContext: ./comment-service
     envVars:
       - key: PORT
-        value: "5000"
+        value: "7000"
       - fromGroup: blog-backend-secrets
       - key: REDIS_URL
         fromService:
