@@ -36,8 +36,8 @@ services:
       - key: COMMENT_SERVICE_URL
         value: http://comment-service:7000
 
-  # 2. Private Auth Service
-  - type: private
+  # 2. Auth Service
+  - type: web
     name: auth-service
     runtime: docker
     plan: free
@@ -53,8 +53,8 @@ services:
           name: blog-redis
           property: connectionString
 
-  # 3. Private Media Service
-  - type: private
+  # 3. Media Service
+  - type: web
     name: media-service
     runtime: docker
     plan: free
@@ -70,8 +70,8 @@ services:
           name: blog-redis
           property: connectionString
 
-  # 4. Private Post Service
-  - type: private
+  # 4. Post Service
+  - type: web
     name: post-service
     runtime: docker
     plan: free
@@ -87,8 +87,8 @@ services:
           name: blog-redis
           property: connectionString
 
-  # 5. Private Comment Service
-  - type: private
+  # 5. Comment Service
+  - type: web
     name: comment-service
     runtime: docker
     plan: free
