@@ -2,12 +2,12 @@ envVarGroups:
   - name: blog-backend-secrets
     envVars:
       - key: MONGO_URI
-        sync: false # Render will prompt you for this string securely in the dashboard
+        sync: false # Pasted securely in the Render Dashboard -> Env Groups
       - key: RABBIT_MQ
-        sync: false # Render will prompt you for your new CloudAMQP string here
+        sync: false # Pasted securely in the Render Dashboard -> Env Groups
 
 services:
-  # 1. Public API Gateway (Exposed to the world)
+  # 1. Public API Gateway (The public-facing entry point)
   - type: web
     name: api-gateway
     runtime: docker
@@ -23,8 +23,16 @@ services:
           type: keyvalue
           name: blog-redis
           property: connectionString
+      - key: AUTH_SERVICE_URL
+        value: http://auth-service:4000
+      - key: POST_SERVICE_URL
+        value: http://post-service:6000
+      - key: COMMENT_SERVICE_URL
+        value: http://comment-service:5000
+      - key: MEDIA_SERVICE_URL
+        value: http://media-service:8000
 
-  # 2. Private Auth Service (Hidden from the public internet)
+  # 2. Private Auth Service
   - type: pserv
     name: auth-service
     runtime: docker
@@ -66,6 +74,8 @@ services:
     dockerfilePath: ./media-service/Dockerfile
     dockerContext: ./media-service
     envVars:
+      - key: PORT
+        value: "8000"
       - fromGroup: blog-backend-secrets
       - key: REDIS_URL
         fromService:
@@ -81,6 +91,8 @@ services:
     dockerfilePath: ./comment-service/Dockerfile
     dockerContext: ./comment-service
     envVars:
+      - key: PORT
+        value: "5000"
       - fromGroup: blog-backend-secrets
       - key: REDIS_URL
         fromService:
@@ -88,8 +100,8 @@ services:
           name: blog-redis
           property: connectionString
 
-  # 6. Render Key-Value Store (Redis Engine Instance)
+  # 6. Internal Redis Instance
   - type: keyvalue
     name: blog-redis
     plan: free
-    ipAllowList: [] # Strict internal-only mapping
+    ipAllowList: []
