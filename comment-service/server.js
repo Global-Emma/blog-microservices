@@ -20,7 +20,6 @@ app.use(cors({
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE']
 }));
-app.options('*', cors());
 app.use(helmet())
 
 mongoose.connect(process.env.MONGO_DB_URL).then(() => {
