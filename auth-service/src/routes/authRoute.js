@@ -8,7 +8,7 @@ router.post('/register', userSignUp);
 router.post('/login', userSignIn)
 router.post('/refresh', refreshTokenController)
 router.get('/details', getUser, getUserDetails)
-router.post('/logout', getUser, logOut)
+router.post('/logout', getUser, logOut);
 router.get('/users', getUser, checkAdmin,  getAllUsers)
 router.put('/role/:id', getUser, checkAdmin,  changeUserRole)
 router.delete('/delete/:id', getUser, checkAdmin,  deleteUser)

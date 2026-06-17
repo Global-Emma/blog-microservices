@@ -222,43 +222,51 @@ const getUserDetails = async (req, res) => {
   }
 };
 
+// authController.js
 const logOut = async (req, res) => {
   try {
-    const tokenUser = await RefreshToken.findOne({
-      user: req.userInfo?.userId,
-    });
+    const userId = req.userInfo?.userId;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "User context not found",
+      });
+    }
+
+    const tokenUser = await RefreshToken.findOne({ user: userId });
 
     if (!tokenUser) {
-      authLogger.warn("UserLogged Out Already");
+      authLogger.warn(`Logout requested but user ${userId} was logged out already`);
+      
+      res.clearCookie("refreshToken");
+      
       return res.status(404).json({
         success: false,
-        message: "User Logged Out Already",
+        message: "User logged out already",
       });
     }
 
-    const delToken = await RefreshToken.findByIdAndDelete(tokenUser._id);
+    await RefreshToken.findByIdAndDelete(tokenUser._id);
+    
+    res.clearCookie("refreshToken");
 
-    if (!delToken) {
-      authLogger.warn("Error logging out User");
-      return res.status(401).json({
-        success: false,
-        message: "Error logging out User",
-      });
-    }
-
-    authLogger.info("User Logged Out Successfully");
+    authLogger.info(`User ${userId} logged out successfully`);
     return res.status(200).json({
       success: true,
-      message: "User Logged Out Successfully",
+      message: "User logged out successfully",
     });
+
   } catch (error) {
-    authLogger.error("Internal Server Error Occured");
+    authLogger.error("Internal Server Error Occurred during logout sequence", error);
     return res.status(500).json({
-      success: true,
-      message: "Internal Server Error Occured",
+      success: false, // Fix: Changed from true to false
+      message: "Internal Server Error Occurred",
     });
   }
 };
+
+
 
 const getAllUsers = async (req, res) => {
   try {

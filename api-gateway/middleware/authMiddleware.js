@@ -1,47 +1,57 @@
-const jwt = require('jsonwebtoken');
-const apiLogger = require('../src/utils/apiLogger');
+const jwt = require("jsonwebtoken");
+const apiLogger = require("../src/utils/apiLogger");
 
 const authValidation = async (req, res, next) => {
-  const publicGetPostsPath = /^\/(posts)(\/.*)?$/;
-  const publicGetUserPath = /^\/(register|login|refresh)(\/.*)?$/;
+  // Fix: Using exact array lookups or clean regex on req.path ignores query strings completely
+  const publicGetPaths = ["/get-posts", "/get-posts/:id"];
+  const publicPostPaths = ["/register", "/login", "/refresh"];
 
-  if ((req.method === 'GET' && publicGetPostsPath.test(req.url)) || (req.method === 'POST' && publicGetUserPath.test(req.url))) {
+  const isPublicGet =
+    req.method === "GET" &&
+    (publicGetPaths.includes(req.path) || req.path.startsWith("/posts/"));
+  const isPublicPost =
+    req.method === "POST" && publicPostPaths.includes(req.path);
+
+  if (isPublicGet || isPublicPost) {
     return next();
   }
 
   try {
-    const authHeaders = req.headers['authorization'];
-    const token = authHeaders && authHeaders.split(' ')[1];
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(" ")[1];
 
     if (!token) {
-      apiLogger.warn('no token provided')
-      return res.status(400).json({
+      apiLogger.warn(
+        `Authorization blocked: No token provided for path ${req.path}`,
+      );
+      return res.status(401).json({
         success: false,
-        message: 'No Token Provided'
-      })
-    };
+        message: "Access Denied: No Token Provided",
+      });
+    }
 
-    const verifyToken = jwt.verify(token, process.env.JWT_SECRET)
+    // jwt.verify automatically handles expiration & signature checks, throwing on failure
+    const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
 
-    if (!verifyToken) {
-      apiLogger.warn('invalid token provided')
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid Token Provided'
-      })
-    };
-
-    req.userInfo = verifyToken;
-
-    next()
+    // Append user payload directly to the request pipeline context
+    req.userInfo = decodedToken;
+    next();
   } catch (error) {
-      apiLogger.error('Session Expired', error)
-      return res.status(400).json({
+    // Branch our logs and messaging based on the explicit JWT error signature
+    if (error.name === "TokenExpiredError") {
+      apiLogger.warn("Authentication failed: Token expired");
+      return res.status(401).json({
         success: false,
-        message: 'Session Expired'
-      })
-    
-  }
-}
+        message: "Session Expired: Please refresh your authentication",
+      });
+    }
 
-module.exports = authValidation
+    apiLogger.error("Authentication failed: Invalid token signature", error);
+    return res.status(401).json({
+      success: false,
+      message: "Access Denied: Invalid Token Provided",
+    });
+  }
+};
+
+module.exports = authValidation;
