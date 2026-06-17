@@ -51,17 +51,24 @@ app.use('/api/comments', commentRoute)
 app.use(errorHandler)
 
 async function startServer () {
+  // 1. Bind to the port IMMEDIATELY so Render can see the service is online
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    commentLogger.info(`COMMENT SERVICE is Running on PORT ${PORT}`)
+  })
+
   try {
+    // 2. Attempt downstream infrastructure connections asynchronously
     await connectToRabbitMq();
-
-    await consumeEvent('post_deleted', consumedEvent)
-
-    app.listen(PORT, () => {
-      commentLogger.info(`COMMENT SERVICE is Running on PORT ${PORT}`)
-    })
+    await consumeEvent('post_deleted', consumedEvent);
+    commentLogger.info('RabbitMQ connection and event consumers initialized.');
+    
   } catch (error) {
-    commentLogger.error('Error Corrured While Starting server', error)
+    commentLogger.error('CRITICAL DEPLOYMENT ERROR: Microservice infrastructure failed to initialize:', error);
+    
+    // 3. Fail Fast: Force the process to exit immediately if infrastructure is broken.
+    // This stops Render from hanging for 15 minutes and tells you there is a configuration issue right away.
+    process.exit(1);
   }
 }
 
-startServer()
+startServer();

@@ -71,17 +71,24 @@ app.use('/api/posts', postRoute)
 app.use(errorHandler)
 
 async function startServer () {
+  // 1. Bind to the port IMMEDIATELY so Render passes its port scan check
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    postLogger.info(`POST SERVICE is Running on PORT ${PORT}`)
+  })
+
   try {
+    // 2. Initialize downstream infrastructure safely after port binding
     await connectToRabbitMq();
-
-    await consumeEvent('new_comment_published', consumedEvents)
-
-    app.listen(PORT, () => {
-      postLogger.info(`POST SERVICE is Running on PORT ${PORT}`)
-    })
+    await consumeEvent('new_comment_published', consumedEvents);
+    postLogger.info('Post Service message broker connections initialized successfully.');
+    
   } catch (error) {
-    postLogger.error('Error Corrured While Starting server', error)
+    // 3. Print the real underlying error stack to your Render logs
+    postLogger.error('CRITICAL DEPLOYMENT ERROR: Post Service failed to initialize infrastructure:', error);
+    
+    // 4. Fail Fast: Immediately close down the container if the connection fails
+    process.exit(1);
   }
 }
 
-startServer()
+startServer();

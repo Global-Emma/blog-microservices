@@ -71,16 +71,26 @@ app.use('/api/media', mediaRoute)
 app.use(errorHandler)
 
   async function startServer () {
-    try {
-      await connectToRabbitMq();
+  // 1. Bind to the port IMMEDIATELY so Render marks the container as healthy
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    mediaLogger.info(`MEDIA SERVICE is Running on PORT ${PORT}`)
+  })
 
-      await consumeEvent('post_deleted', consumedEventHandler)
-      app.listen(PORT, () => {
-        mediaLogger.info(`MEDIA SERVICE is Running on PORT ${PORT}`)
-      })
-    } catch (error) {
-      mediaLogger.error('Error Occured While Starting Server')
-    }
+  try {
+    // 2. Initialize your infrastructure connection
+    await connectToRabbitMq();
+
+    // 3. Register your specific media consumer event handler
+    await consumeEvent('post_deleted', consumedEventHandler)
+    mediaLogger.info('Media Service message broker connections initialized successfully.')
+
+  } catch (error) {
+    // 4. Output the real error stack to your Render logs
+    mediaLogger.error('CRITICAL DEPLOYMENT ERROR: Media Service failed to initialize infrastructure:', error)
+    
+    // 5. Fail Fast: Close the process immediately if the connection fails
+    process.exit(1)
   }
+}
 
-  startServer()
+startServer()
