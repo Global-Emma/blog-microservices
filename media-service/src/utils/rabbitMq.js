@@ -17,7 +17,7 @@ const connectToRabbitMq = async () => {
     mediaLogger.info('Connection To RabbitMq Successful')
     return channel
   } catch (error) {
-    mediaLogger('RabbitMq Connection Failed', error);
+    mediaLogger.error('RabbitMq Connection Failed', error);
   }
 }
 
